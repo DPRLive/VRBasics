@@ -29,7 +29,6 @@ AVRCharacter::AVRCharacter()
 void AVRCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
 // Called every frame
@@ -62,6 +61,7 @@ bool AVRCharacter::FindTeleportDestination(FVector& OutLocation)
 		ProjectPointToNavigation(HitResult.Location, NavLocation, TeleportProjectionExtent);
 	if (!bOnNavMesh) return false;
 
+	OutLocation = NavLocation.Location;
 	return true;
 }
 
