@@ -8,6 +8,8 @@
 #include "VRCharacter.h"
 #include "NavigationSystem.h" // build.cs 파일에 NavigationSystem 추가해야함
 #include "Components/CapsuleComponent.h"
+#include "Components/PostProcessComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 // Sets default values
 AVRCharacter::AVRCharacter()
@@ -23,12 +25,24 @@ AVRCharacter::AVRCharacter()
 
 	DestinationMarker = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DestinationMarker"));
 	DestinationMarker->SetupAttachment(GetRootComponent());
+
+	PostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PostProcessComponent"));
+	PostProcessComponent->SetupAttachment(GetRootComponent());
 }
 
 // Called when the game starts or when spawned
 void AVRCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (BlinkerMaterialBase != nullptr)
+	{
+		// 부모를 기준으로 하는 동적 Material 생성
+		BlinkerMaterialInstance = UMaterialInstanceDynamic::Create(BlinkerMaterialBase, this);
+		// 액터가 들고있는 PostProcess Component에 적용
+		PostProcessComponent->AddOrUpdateBlendable(BlinkerMaterialInstance);
+
+	}
 }
 
 // Called every frame
@@ -44,6 +58,8 @@ void AVRCharacter::Tick(float DeltaTime)
 	VRRoot->AddWorldOffset(-NewCameraOffset);
 
 	UpdateDestinationMarker();
+
+	UpdateBlinkers();
 }
 
 bool AVRCharacter::FindTeleportDestination(FVector& OutLocation)
@@ -79,6 +95,54 @@ void AVRCharacter::UpdateDestinationMarker()
 	{
 		DestinationMarker->SetVisibility(false);
 	}
+}
+
+void AVRCharacter::UpdateBlinkers()
+{
+	if (RadiusVsVelocity == nullptr) return;
+	// 동적 인스턴스 변환
+	float Speed = GetVelocity().Size();
+	float Radius = RadiusVsVelocity->GetFloatValue(Speed);
+
+	BlinkerMaterialInstance->SetScalarParameterValue(TEXT("Radius"), Radius);
+	
+	FVector2D Centre = GetBlinkerCentre();
+	UE_LOG(LogTemp, Warning, TEXT("%f %f"), Centre.X, Centre.Y);
+	BlinkerMaterialInstance->SetVectorParameterValue(TEXT("Centre"), FLinearColor(Centre.X, Centre.Y, 0));
+}
+
+FVector2D AVRCharacter::GetBlinkerCentre()
+{
+	FVector MovementDirection = GetVelocity().GetSafeNormal();
+	if (MovementDirection.IsNearlyZero()) // 0에 가까울경우 처리하지 않음. 실제로 0임을 보장하기 힘들기 떄문
+	{
+		return FVector2D(0.5, 0.5);
+	}
+
+	FVector WorldStationaryLocation;
+	//내적을 통하여 타겟의 위치를 알아냄. (앞, 뒤) guriguri882.tistory.com/45
+	if (FVector::DotProduct(Camera->GetForwardVector(), MovementDirection) > 0) 
+	{
+		WorldStationaryLocation = Camera->GetComponentLocation() + MovementDirection * 1000;
+	}
+	else
+	{
+		WorldStationaryLocation = Camera->GetComponentLocation() - MovementDirection * 1000;
+	}
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC == nullptr) return FVector2D(0.5, 0.5);
+
+	FVector2D ScreenStationaryLocation;
+	//3d 위치를 스크린의 2d위치로 변환 (투영)
+	PC->ProjectWorldLocationToScreen(WorldStationaryLocation, ScreenStationaryLocation);
+	
+	int32 SizeX, SizeY;
+	PC->GetViewportSize(SizeX, SizeY);
+	ScreenStationaryLocation.X /= SizeX;
+	ScreenStationaryLocation.Y /= SizeY;
+
+	return ScreenStationaryLocation;
 }
 
 // Called to bind functionality to input

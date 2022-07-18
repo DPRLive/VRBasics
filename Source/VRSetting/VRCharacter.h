@@ -35,6 +35,18 @@ private:
 
 	UPROPERTY() //언리얼이 메모리 관리해줌ㅋ
 		class USceneComponent* VRRoot;
+	
+	UPROPERTY() //언리얼이 메모리 관리해줌ㅋ
+		class UMaterialInstanceDynamic* BlinkerMaterialInstance;
+
+	UPROPERTY(EditAnywhere)
+		class UMaterialInterface* BlinkerMaterialBase;
+
+	UPROPERTY() // Blinker를 위한 포스트프로세스 컴포넌트
+		class UPostProcessComponent* PostProcessComponent;
+
+	UPROPERTY(EditAnywhere) //동적인 Blink를 위한 커브 
+		class UCurveFloat* RadiusVsVelocity;
 
 	UPROPERTY(EditAnywhere)
 		float MaxTeleportDistance = 1000;
@@ -52,5 +64,7 @@ private:
 	void BeginTeleport();
 	void FinishTeleport();
 	void StartFade(float FromAlpha, float ToAlpha);
+	void UpdateBlinkers();
+	FVector2D GetBlinkerCentre();
 };
 
