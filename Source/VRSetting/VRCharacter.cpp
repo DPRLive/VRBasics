@@ -10,10 +10,12 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/PostProcessComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "MotionControllerComponent.h"
 #include "Kismet/GamePlayStatics.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshcomponent.h"
+#include "MotionControllerComponent.h"
+
+#include "HandController.h"
 
 // Sets default values
 AVRCharacter::AVRCharacter()
@@ -27,16 +29,8 @@ AVRCharacter::AVRCharacter()
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera")); // 카메라 컴포넌트 추가
 	Camera->SetupAttachment(VRRoot); // vr루트 컴포넌트의 자식으로 붙이기
 
-	LeftController = CreateDefaultSubobject<UMotionControllerComponent>(TEXT("LeftController"));
-	LeftController->SetupAttachment(VRRoot);
-	LeftController->SetTrackingSource(EControllerHand::Left); // 왼손에 설정
-
-	RightController = CreateDefaultSubobject<UMotionControllerComponent>(TEXT("RightController"));
-	RightController->SetupAttachment(VRRoot);
-	RightController->SetTrackingSource(EControllerHand::Right); // 오른손에 설정
-	 
 	TeleportPath = CreateDefaultSubobject<USplineComponent>(TEXT("TeleportPath"));
-	TeleportPath->SetupAttachment(RightController);
+	TeleportPath->SetupAttachment(VRRoot);
 
 	DestinationMarker = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DestinationMarker"));
 	DestinationMarker->SetupAttachment(GetRootComponent());
@@ -59,15 +53,23 @@ void AVRCharacter::BeginPlay()
 
 	}
 
+	// BP_HandController로 캐스팅하여 만든다.
+	LeftController = GetWorld()->SpawnActor<AHandController>(HandControllerClass);
 	if (LeftController != nullptr)
 	{
-		LeftController->bDisplayDeviceModel = true;// 알아서 컨트롤러에 맞춰 스태틱 메시 보이게함
+		LeftController->AttachToComponent(VRRoot, FAttachmentTransformRules::KeepRelativeTransform);
+		LeftController->SetHand(EControllerHand::Left);
+		LeftController->SetOwner(this);
 	}
+	
+	// BP_HandController로 캐스팅하여 만든다.
+	RightController = GetWorld()->SpawnActor<AHandController>(HandControllerClass);
 	if (RightController != nullptr)
 	{
-		RightController->bDisplayDeviceModel = true;// 알아서 컨트롤러에 맞춰 스태틱 메시 보이게함
+		RightController->AttachToComponent(VRRoot, FAttachmentTransformRules::KeepRelativeTransform);
+		RightController->SetHand(EControllerHand::Right);
+		RightController->SetOwner(this);
 	}
-
 }
 
 // Called every frame
@@ -89,9 +91,10 @@ void AVRCharacter::Tick(float DeltaTime)
 
 bool AVRCharacter::FindTeleportDestination(TArray<FVector>& OutPath, FVector& OutLocation)
 {
+	if (RightController == nullptr) return false;
 	FHitResult HitResult;
-	FVector Look = RightController->GetForwardVector();
-	FVector Start = RightController->GetComponentLocation();
+	FVector Look = RightController->GetActorForwardVector();
+	FVector Start = RightController->GetActorLocation();
 
 	FPredictProjectilePathParams Params( // 포물선을 따라 텔레포트 위치 추적
 		TeleportProjectileRadius,
@@ -153,7 +156,6 @@ void AVRCharacter::UpdateBlinkers()
 	BlinkerMaterialInstance->SetScalarParameterValue(TEXT("Radius"), Radius);
 	
 	FVector2D Centre = GetBlinkerCentre();
-	UE_LOG(LogTemp, Warning, TEXT("%f %f"), Centre.X, Centre.Y);
 	BlinkerMaterialInstance->SetVectorParameterValue(TEXT("Centre"), FLinearColor(Centre.X, Centre.Y, 0));
 }
 

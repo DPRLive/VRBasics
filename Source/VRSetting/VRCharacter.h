@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "HandController.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "VRCharacter.generated.h"
@@ -26,12 +28,14 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+protected:
+	
 private:
 	UPROPERTY() 
-		class UMotionControllerComponent* LeftController;
+		class AHandController* LeftController;
 
 	UPROPERTY() 
-		class UMotionControllerComponent* RightController;
+		class AHandController* RightController;
 
 	UPROPERTY(VisibleAnywhere)
 		class UCameraComponent* Camera;
@@ -65,6 +69,9 @@ private:
 
 	UPROPERTY(EditDefaultsOnly) // StaticMeshComponent의 SetStaticMesh를 위해
 		class UMaterialInterface* TeleportArchMaterial;
+
+	UPROPERTY(EditDefaultsOnly) //BP_HandController를 담는다.
+		TSubclassOf<AHandController> HandControllerClass;
 
 	UPROPERTY(EditAnywhere)
 		float TeleportProjectileRadius = 10;
