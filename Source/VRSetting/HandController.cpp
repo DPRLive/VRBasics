@@ -1,6 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
+#include "Haptics/HapticFeedbackEffect_Base.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "HandController.h"
 
 // Sets default values
@@ -27,6 +30,12 @@ void AHandController::BeginPlay()
 void AHandController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (bIsClimbing)
+	{
+		FVector HandControllerDelta = GetActorLocation() - ClimbingStartLocation;
+		GetAttachParentActor()->AddActorWorldOffset(-HandControllerDelta);
+	}
 }
 
 void AHandController::SetHand(EControllerHand Hand)
@@ -50,12 +59,32 @@ void AHandController::SetHand(EControllerHand Hand)
 	}
 }
 
+void AHandController::PairHandController(AHandController* Controller)
+{
+	OtherController = Controller;
+	OtherController->OtherController = this; //상대한테는 나를 설정
+}
+
 void AHandController::ActorBeginOverlap(AActor* OverlappedActor, AActor* OhterActor)
 {
 	bool bNewCanClimb = CanClimb();
 	if (!bCanClimb && bNewCanClimb)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Can Climb"));
+
+		// 진동 효과
+		if (HapticFeedbackEffect != nullptr)
+		{
+			APawn* Pawn = Cast<APawn>(GetAttachParentActor());
+			if (Pawn != nullptr)
+			{
+				APlayerController* Controller = Cast<APlayerController>(Pawn->GetController());
+				if (Controller != nullptr)
+				{
+					Controller->PlayHapticEffect(HapticFeedbackEffect, MotionController->GetTrackingSource());
+				}
+			}
+		}
 	}
 	bCanClimb = bNewCanClimb;
 }
@@ -80,3 +109,34 @@ bool AHandController::CanClimb() const
 	return false;
 }
 
+void AHandController::Grip()
+{
+	if (!bCanClimb) return;
+
+	if (!bIsClimbing)
+	{
+		bIsClimbing = true;
+		ClimbingStartLocation = GetActorLocation();
+	
+		OtherController->bIsClimbing = false;
+
+		ACharacter* Character = Cast<ACharacter>(GetAttachParentActor());
+		if (Character != nullptr)
+		{
+			Character->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
+		}
+	}
+}
+
+void AHandController::Release()
+{
+	if (bIsClimbing)
+	{
+		bIsClimbing = false;
+		ACharacter* Character = Cast<ACharacter>(GetAttachParentActor());
+		if (Character != nullptr)
+		{
+			Character->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Falling);
+		}
+	}
+}

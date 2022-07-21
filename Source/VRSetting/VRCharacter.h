@@ -32,10 +32,10 @@ protected:
 	
 private:
 	UPROPERTY() 
-		class AHandController* LeftController;
+		AHandController* LeftController;
 
 	UPROPERTY() 
-		class AHandController* RightController;
+		AHandController* RightController;
 
 	UPROPERTY(VisibleAnywhere)
 		class UCameraComponent* Camera;
@@ -100,5 +100,11 @@ private:
 	void FinishTeleport();
 	void StartFade(float FromAlpha, float ToAlpha);
 	FVector2D GetBlinkerCentre();
+
+	void GripLeft() { LeftController->Grip(); }
+	void ReleaseLeft() { LeftController->Release(); }
+
+	void GripRight() { RightController->Grip(); }
+	void ReleaseRight() { RightController->Release(); }
 };
 

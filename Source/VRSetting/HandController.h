@@ -17,6 +17,11 @@ public:
 	AHandController();
 
 	void SetHand(EControllerHand Hand);
+	void PairHandController(AHandController* Controller);
+
+	void Grip();
+	void Release();
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -35,7 +40,14 @@ private:
 	UPROPERTY(VisibleAnywhere)
 		UMotionControllerComponent* MotionController;
 
-	bool CanClimb() const;
+	//Parameters
+	UPROPERTY(EditDefaultsOnly)
+		 class UHapticFeedbackEffect_Base* HapticFeedbackEffect;
 
+	bool CanClimb() const;
 	bool bCanClimb = false;
+	bool bIsClimbing = false;
+	FVector ClimbingStartLocation;
+
+	AHandController* OtherController;
 };
